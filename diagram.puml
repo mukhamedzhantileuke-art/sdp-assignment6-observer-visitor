@@ -1,0 +1,192 @@
+@startuml
+title Energy Grid Management System - Observer & Visitor Architecture (Assignment 6)
+
+package "Part A: Observer Pattern (Clean Code ch. 11)" {
+    enum GridEventType {
+        METER_READING
+        LOAD_SURGE
+        OUTAGE_ALERT
+        VOLTAGE_SAG
+        AGGREGATED_LOAD_REPORT
+        MAINTENANCE_TICKET_CREATED
+    }
+
+    class GridEvent <<immutable>> {
+        - eventId: String
+        - type: GridEventType
+        - timestamp: long
+        - sourceId: String
+        - targetSubtreeId: String
+        - metricValue: double
+        - message: String
+        + of(...)
+    }
+
+    interface GridObserver<E extends GridEvent> {
+        + onEvent(event: E): void
+        + getObserverId(): String
+    }
+
+    interface GridSubject<E extends GridEvent> {
+        + subscribe(type: GridEventType, observer: GridObserver<E>): void
+        + unsubscribe(type: GridEventType, observer: GridObserver<E>): void
+        + notifyObservers(event: E): void
+        + getObserverCount(type: GridEventType): int
+    }
+
+    class DefaultGridSubject implements GridSubject {
+        - registry: ConcurrentMap<GridEventType, CopyOnWriteArrayList<GridObserver>>
+        - totalDispatchedEvents: AtomicLong
+    }
+
+    class SmartMeterReadingSource extends DefaultGridSubject {
+        + emitMeterReading(...)
+    }
+
+    class SubstationTelemetrySource extends DefaultGridSubject {
+        + emitLoadSurge(...)
+        + emitVoltageSag(...)
+        + emitOutageAlert(...)
+    }
+
+    class BillingServiceListener implements GridObserver {
+        - tariffPerKwh: double
+        - consumerTotals: Map<String, DoubleAdder>
+    }
+
+    class GridLoadBalancerListener implements GridObserver {
+        - overloadThresholdKw: double
+        - balancingActionCount: AtomicInteger
+    }
+
+    class OutageAlertServiceListener implements GridObserver {
+        - outageAlertCount: AtomicInteger
+        - voltageSagCount: AtomicInteger
+    }
+
+    class ConsumptionStatisticsTrackerListener implements GridObserver {
+        - readingCount: LongAdder
+        - totalEnergyKwh: DoubleAdder
+    }
+
+    class RegionalLoadAggregator extends DefaultGridSubject implements GridObserver {
+        - batchThreshold: int
+        - subtreeLoadMap: Map<String, DoubleAdder>
+        + publishAggregatedReport(subtreeId: String): void
+    }
+
+    GridEvent --> GridEventType
+    DefaultGridSubject --> GridEvent
+    GridObserver ..> GridEvent : consumes
+}
+
+package "Part B: Visitor Pattern (Clean Code ch. 12)" {
+    interface GridElement {
+        + accept<R>(visitor: GridVisitor<R>): R
+        + getId(): String
+        + getName(): String
+    }
+
+    class PowerGrid implements GridElement {
+        - substations: List<Substation>
+        + accept(visitor)
+    }
+
+    class Substation implements GridElement {
+        - transformerCapacityMva: double
+        - lines: List<DistributionLine>
+        + accept(visitor)
+    }
+
+    class DistributionLine implements GridElement {
+        - resistanceOhms: double
+        - elements: List<GridElement>
+        + accept(visitor)
+    }
+
+    class ResidentialConsumer implements GridElement {
+        - activeDemandKw: double
+        + accept(visitor)
+    }
+
+    class IndustrialConsumer implements GridElement {
+        - activeDemandKw: double
+        + accept(visitor)
+    }
+
+    class SolarGenerator implements GridElement {
+        - currentGenerationKw: double
+        - online: boolean
+        + accept(visitor)
+    }
+
+    class BatteryStorage implements GridElement {
+        - capacityKwh: double
+        - currentChargeKwh: double
+        - mode: OperatingMode
+        + accept(visitor)
+    }
+
+    class EvChargingStation implements GridElement {
+        - activeDrawKw: double
+        + accept(visitor)
+    }
+
+    PowerGrid *-- Substation : contains
+    Substation *-- DistributionLine : contains
+    DistributionLine *-- GridElement : contains
+
+    interface GridVisitor<R> {
+        + visit(grid: PowerGrid): R
+        + visit(substation: Substation): R
+        + visit(line: DistributionLine): R
+        + visit(consumer: ResidentialConsumer): R
+        + visit(consumer: IndustrialConsumer): R
+        + visit(generator: SolarGenerator): R
+        + visit(storage: BatteryStorage): R
+        + visit(evStation: EvChargingStation): R
+    }
+
+    class NetLoadCalculationVisitor implements GridVisitor {
+        + visit(...): Double
+    }
+
+    class GridHealthAuditVisitor implements GridVisitor {
+        + visit(...): GridHealthReport
+    }
+
+    class OverloadedComponentFilterVisitor implements GridVisitor {
+        + visit(...): List<GridElement>
+    }
+
+    class GridJsonExportVisitor implements GridVisitor {
+        + visit(...): String
+    }
+
+    class CarbonEmissionAuditVisitor implements GridVisitor {
+        + visit(...): Double
+    }
+}
+
+package "Integration Link" {
+    class GridInspectorIntegrationService implements GridObserver {
+        - powerGrid: PowerGrid
+        - eventPublisher: DefaultGridSubject
+        + onEvent(event: GridEvent): void
+    }
+
+    class MaintenanceTicket <<immutable>> {
+        - ticketId: String
+        - targetSubtreeId: String
+        - severity: Severity
+        - measuredNetLoadKw: double
+    }
+
+    GridInspectorIntegrationService --> PowerGrid : locates subtree
+    GridInspectorIntegrationService --> NetLoadCalculationVisitor : runs on subtree
+    GridInspectorIntegrationService --> OverloadedComponentFilterVisitor : runs on subtree
+    GridInspectorIntegrationService --> MaintenanceTicket : compiles report
+    GridInspectorIntegrationService --> DefaultGridSubject : publishes MAINTENANCE_TICKET_CREATED
+}
+
+@enduml
