@@ -65,4 +65,9 @@ public class CarbonEmissionAuditVisitor implements GridVisitor<Double> {
             case IDLE -> 0.0;
         };
     }
+
+    @Override
+    public Double visit(EvChargingStation evStation) {
+        return evStation.getActiveDrawKw() * 0.35;
+    }
 }

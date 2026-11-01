@@ -24,4 +24,6 @@ public interface GridVisitor<R> {
 
     R visit(BatteryStorage storage);
 
+    R visit(EvChargingStation evStation);
+
 }

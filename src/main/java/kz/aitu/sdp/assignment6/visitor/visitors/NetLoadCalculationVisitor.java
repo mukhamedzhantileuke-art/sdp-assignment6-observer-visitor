@@ -80,4 +80,9 @@ public class NetLoadCalculationVisitor implements GridVisitor<Double> {
         };
     }
 
+
+    @Override
+    public Double visit(EvChargingStation evStation) {
+        return evStation.getActiveDrawKw();
+    }
 }

@@ -42,6 +42,8 @@ public class OverloadedComponentFilterVisitor implements GridVisitor<List<GridEl
                 downstreamDemandKw += rc.getActiveDemandKw();
             } else if (elem instanceof IndustrialConsumer ic) {
                 downstreamDemandKw += ic.getActiveDemandKw();
+            } else if (elem instanceof EvChargingStation ev) {
+                downstreamDemandKw += ev.getActiveDrawKw();
 
             }
         }
@@ -91,6 +93,14 @@ public class OverloadedComponentFilterVisitor implements GridVisitor<List<GridEl
         return Collections.unmodifiableList(flaggedElements);
     }
 
+
+    @Override
+    public List<GridElement> visit(EvChargingStation evStation) {
+        if (evStation.getActiveDrawKw() > 300.0) {
+            flaggedElements.add(evStation);
+        }
+        return Collections.unmodifiableList(flaggedElements);
+    }
 
     public List<GridElement> getFlaggedElements() {
         return Collections.unmodifiableList(flaggedElements);

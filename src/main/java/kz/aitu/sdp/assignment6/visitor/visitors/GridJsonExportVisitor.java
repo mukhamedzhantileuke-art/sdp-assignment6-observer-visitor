@@ -155,4 +155,12 @@ public class GridJsonExportVisitor implements GridVisitor<String> {
                 storage.getCapacityKwh(), storage.getCurrentChargeKwh(), storage.getMode(), storage.getActivePowerRateKw());
     }
 
+
+    @Override
+    public String visit(EvChargingStation evStation) {
+        return indent() + String.format(Locale.US,
+                "{\"type\": \"EvChargingStation\", \"id\": \"%s\", \"name\": \"%s\", \"bays\": %d, \"activeDrawKw\": %.2f, \"fastCharging\": %b}",
+                escape(evStation.getId()), escape(evStation.getName()),
+                evStation.getChargingBays(), evStation.getActiveDrawKw(), evStation.isFastChargingEnabled());
+    }
 }

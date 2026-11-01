@@ -89,6 +89,13 @@ public class GridHealthAuditVisitor implements GridVisitor<GridHealthReport> {
     }
 
 
+    @Override
+    public GridHealthReport visit(EvChargingStation evStation) {
+        evStations++;
+        totalDemandKw += evStation.getActiveDrawKw();
+        return buildReport();
+    }
+
     public GridHealthReport buildReport() {
         return new GridHealthReport(
                 substations,
